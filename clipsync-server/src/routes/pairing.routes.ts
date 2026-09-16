@@ -12,8 +12,7 @@ export function createPairingRouter(devices: DevicesRepo, sessions: PairingSessi
 
   router.post('/start', (req, res, next) => {
     // Bootstrap case: the very first device pairs without prior auth.
-    // Once any device has been created (even if later revoked), auth is required.
-    if (devices.countTotalDevices() === 0) {
+    if (devices.countActiveDevices() === 0) {
       handleStart(req, res);
       return;
     }
