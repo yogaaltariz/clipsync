@@ -5,6 +5,9 @@
 node_modules/
 dist/
 
+# Nx local cache (machine-local, regenerable)
+.nx/
+
 # runtime data (clipsync-server writes SQLite + blobs here)
 data/
 

@@ -1,0 +1,17 @@
+{
+  "name": "clipsync",
+  "private": true,
+  "version": "0.1.0",
+  "workspaces": [
+    "apps/clipsync-web"
+  ],
+  "devDependencies": {
+    "@nx/js": "^23.2.1",
+    "@nx/react": "^23.2.1",
+    "@nx/vite": "^23.2.1",
+    "nx": "^23.2.1"
+  },
+  "overrides": {
+    "typescript": "^5.7.0"
+  }
+}
