@@ -67,4 +67,33 @@ describe('deviceAuth middleware (via GET /__test/protected)', () => {
     const res = await request(ctx.app).get('/__test/protected').set(headers);
     expect(res.status).toBe(401);
   });
+
+  it('accepts a POST request with a valid signature over real JSON body content', async () => {
+    ctx = buildTestServer();
+    const { deviceId, keys } = pairedDevice();
+    const bodyData = { foo: 'bar' };
+    const bodyBuffer = Buffer.from(JSON.stringify(bodyData));
+    const headers = signRequest(keys.privateKeyAuth, 'POST', '/__test/protected', bodyBuffer);
+    headers['X-ClipSync-Device-Id'] = deviceId;
+    const res = await request(ctx.app)
+      .post('/__test/protected')
+      .set(headers)
+      .send(bodyData);
+    expect(res.status).toBe(200);
+  });
+
+  it('rejects a POST request when body content differs from what was signed', async () => {
+    ctx = buildTestServer();
+    const { deviceId, keys } = pairedDevice();
+    const signedBodyData = { foo: 'bar' };
+    const signedBodyBuffer = Buffer.from(JSON.stringify(signedBodyData));
+    const headers = signRequest(keys.privateKeyAuth, 'POST', '/__test/protected', signedBodyBuffer);
+    headers['X-ClipSync-Device-Id'] = deviceId;
+    const actualBodyData = { foo: 'baz' };
+    const res = await request(ctx.app)
+      .post('/__test/protected')
+      .set(headers)
+      .send(actualBodyData);
+    expect(res.status).toBe(401);
+  });
 });
