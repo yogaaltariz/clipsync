@@ -6,7 +6,11 @@ import { deviceAuth } from '../middleware/deviceAuth.js';
 import type { DevicesRepo } from '../db/devices.repo.js';
 import type { PairingSessionsRepo } from '../db/pairingSessions.repo.js';
 
-export function createPairingRouter(devices: DevicesRepo, sessions: PairingSessionsRepo): Router {
+export function createPairingRouter(
+  devices: DevicesRepo,
+  sessions: PairingSessionsRepo,
+  onDeviceRevoked: (deviceId: string) => void = () => {},
+): Router {
   const router = Router();
   const requireAuth = deviceAuth(devices);
 
@@ -87,7 +91,9 @@ export function createPairingRouter(devices: DevicesRepo, sessions: PairingSessi
     // @types/express-serve-static-core (permissive default for repeated-
     // capture routes like :id*, which this project doesn't use) — this
     // route's :deviceId segment is always a single string at runtime.
-    devices.revokeDevice(req.params.deviceId as string);
+    const deviceId = req.params.deviceId as string;
+    devices.revokeDevice(deviceId);
+    onDeviceRevoked(deviceId);
     res.status(204).send();
   });
 
