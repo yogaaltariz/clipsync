@@ -1,6 +1,7 @@
 // @vitest-environment node
 import { afterEach, describe, expect, it } from 'vitest';
 import 'fake-indexeddb/auto';
+import { set } from 'idb-keyval';
 import {
   clearDeviceIdentity,
   exportPublicJwk,
@@ -60,5 +61,21 @@ describe('saveDeviceIdentity / loadDeviceIdentity round trip', () => {
     await saveDeviceIdentity({ deviceId: 'device-to-clear', authKeyPair, exchangeKeyPair });
     await clearDeviceIdentity();
     expect(await loadDeviceIdentity()).toBeNull();
+  });
+
+  it('returns null and clears corrupted/incomplete records instead of returning a broken object', async () => {
+    // Simulate a schema change or corruption by writing a partial record directly
+    await set('clipsync-device-identity', {
+      deviceId: 'corrupted-device',
+      // Missing authPrivateKey, authPublicKey, exchangePrivateKey, exchangePublicKey
+    });
+
+    // loadDeviceIdentity should detect the missing fields and return null
+    const loaded = await loadDeviceIdentity();
+    expect(loaded).toBeNull();
+
+    // The corrupted record should have been cleared
+    const reloaded = await loadDeviceIdentity();
+    expect(reloaded).toBeNull();
   });
 });

@@ -49,7 +49,20 @@ export async function loadDeviceIdentity(): Promise<DeviceIdentity | null> {
     exchangePrivateKey: CryptoKey;
     exchangePublicKey: CryptoKey;
   }>(STORAGE_KEY);
-  if (!stored) return null;
+
+  const isValid =
+    !!stored &&
+    typeof stored.deviceId === 'string' &&
+    stored.authPrivateKey instanceof CryptoKey &&
+    stored.authPublicKey instanceof CryptoKey &&
+    stored.exchangePrivateKey instanceof CryptoKey &&
+    stored.exchangePublicKey instanceof CryptoKey;
+
+  if (!isValid) {
+    if (stored) await del(STORAGE_KEY); // clear a corrupted/partial record rather than leave it lingering
+    return null;
+  }
+
   return {
     deviceId: stored.deviceId,
     authKeyPair: { privateKey: stored.authPrivateKey, publicKey: stored.authPublicKey },
