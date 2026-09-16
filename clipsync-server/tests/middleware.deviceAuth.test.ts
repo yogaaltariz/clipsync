@@ -4,7 +4,7 @@ import { buildTestServer } from './helpers/testServer.js';
 import { createDevicesRepo } from '../src/db/devices.repo.js';
 import { generateDeviceKeys, signRequest } from './helpers/testKeys.js';
 
-describe('deviceAuth middleware (via GET /__test/protected)', () => {
+describe('deviceAuth middleware (via POST /api/pairing/start)', () => {
   let ctx: ReturnType<typeof buildTestServer>;
 
   afterEach(() => ctx?.cleanup());
@@ -26,35 +26,48 @@ describe('deviceAuth middleware (via GET /__test/protected)', () => {
 
   it('rejects a request with no auth headers', async () => {
     ctx = buildTestServer();
-    const res = await request(ctx.app).get('/__test/protected');
+    pairedDevice(); // ensure at least one device exists so auth is required
+    const res = await request(ctx.app).post('/api/pairing/start').send({ initiatorDeviceName: 'x' });
     expect(res.status).toBe(401);
   });
 
   it('accepts a request with a valid signature from a paired device', async () => {
     ctx = buildTestServer();
     const { deviceId, keys } = pairedDevice();
-    const headers = signRequest(keys.privateKeyAuth, 'GET', '/__test/protected');
+    const bodyBuffer = Buffer.from(JSON.stringify({ initiatorDeviceName: 'x' }));
+    const headers = signRequest(keys.privateKeyAuth, 'POST', '/api/pairing/start', bodyBuffer);
     headers['X-ClipSync-Device-Id'] = deviceId;
-    const res = await request(ctx.app).get('/__test/protected').set(headers);
+    const res = await request(ctx.app)
+      .post('/api/pairing/start')
+      .set(headers)
+      .send({ initiatorDeviceName: 'x' });
     expect(res.status).toBe(200);
   });
 
   it('rejects an unknown device id', async () => {
     ctx = buildTestServer();
     const { keys } = pairedDevice();
-    const headers = signRequest(keys.privateKeyAuth, 'GET', '/__test/protected');
+    const bodyBuffer = Buffer.from(JSON.stringify({ initiatorDeviceName: 'x' }));
+    const headers = signRequest(keys.privateKeyAuth, 'POST', '/api/pairing/start', bodyBuffer);
     headers['X-ClipSync-Device-Id'] = 'someone-else';
-    const res = await request(ctx.app).get('/__test/protected').set(headers);
+    const res = await request(ctx.app)
+      .post('/api/pairing/start')
+      .set(headers)
+      .send({ initiatorDeviceName: 'x' });
     expect(res.status).toBe(401);
   });
 
   it('rejects a stale timestamp outside the auth window', async () => {
     ctx = buildTestServer();
     const { deviceId, keys } = pairedDevice();
+    const bodyBuffer = Buffer.from(JSON.stringify({ initiatorDeviceName: 'x' }));
     const staleTimestamp = String(Date.now() - 60_000);
-    const headers = signRequest(keys.privateKeyAuth, 'GET', '/__test/protected', Buffer.alloc(0), staleTimestamp);
+    const headers = signRequest(keys.privateKeyAuth, 'POST', '/api/pairing/start', bodyBuffer, staleTimestamp);
     headers['X-ClipSync-Device-Id'] = deviceId;
-    const res = await request(ctx.app).get('/__test/protected').set(headers);
+    const res = await request(ctx.app)
+      .post('/api/pairing/start')
+      .set(headers)
+      .send({ initiatorDeviceName: 'x' });
     expect(res.status).toBe(401);
   });
 
@@ -62,21 +75,25 @@ describe('deviceAuth middleware (via GET /__test/protected)', () => {
     ctx = buildTestServer();
     const { deviceId, keys, repo } = pairedDevice();
     repo.revokeDevice(deviceId);
-    const headers = signRequest(keys.privateKeyAuth, 'GET', '/__test/protected');
+    const bodyBuffer = Buffer.from(JSON.stringify({ initiatorDeviceName: 'x' }));
+    const headers = signRequest(keys.privateKeyAuth, 'POST', '/api/pairing/start', bodyBuffer);
     headers['X-ClipSync-Device-Id'] = deviceId;
-    const res = await request(ctx.app).get('/__test/protected').set(headers);
+    const res = await request(ctx.app)
+      .post('/api/pairing/start')
+      .set(headers)
+      .send({ initiatorDeviceName: 'x' });
     expect(res.status).toBe(401);
   });
 
   it('accepts a POST request with a valid signature over real JSON body content', async () => {
     ctx = buildTestServer();
     const { deviceId, keys } = pairedDevice();
-    const bodyData = { foo: 'bar' };
+    const bodyData = { initiatorDeviceName: 'x' };
     const bodyBuffer = Buffer.from(JSON.stringify(bodyData));
-    const headers = signRequest(keys.privateKeyAuth, 'POST', '/__test/protected', bodyBuffer);
+    const headers = signRequest(keys.privateKeyAuth, 'POST', '/api/pairing/start', bodyBuffer);
     headers['X-ClipSync-Device-Id'] = deviceId;
     const res = await request(ctx.app)
-      .post('/__test/protected')
+      .post('/api/pairing/start')
       .set(headers)
       .send(bodyData);
     expect(res.status).toBe(200);
@@ -85,13 +102,13 @@ describe('deviceAuth middleware (via GET /__test/protected)', () => {
   it('rejects a POST request when body content differs from what was signed', async () => {
     ctx = buildTestServer();
     const { deviceId, keys } = pairedDevice();
-    const signedBodyData = { foo: 'bar' };
+    const signedBodyData = { initiatorDeviceName: 'x' };
     const signedBodyBuffer = Buffer.from(JSON.stringify(signedBodyData));
-    const headers = signRequest(keys.privateKeyAuth, 'POST', '/__test/protected', signedBodyBuffer);
+    const headers = signRequest(keys.privateKeyAuth, 'POST', '/api/pairing/start', signedBodyBuffer);
     headers['X-ClipSync-Device-Id'] = deviceId;
-    const actualBodyData = { foo: 'baz' };
+    const actualBodyData = { initiatorDeviceName: 'y' };
     const res = await request(ctx.app)
-      .post('/__test/protected')
+      .post('/api/pairing/start')
       .set(headers)
       .send(actualBodyData);
     expect(res.status).toBe(401);

@@ -6,6 +6,7 @@ export interface DevicesRepo {
   getDeviceById(deviceId: string): Device | undefined;
   listActiveDevices(): Device[];
   countActiveDevices(): number;
+  countTotalDevices(): number;
   revokeDevice(deviceId: string): void;
 }
 
@@ -41,6 +42,12 @@ export function createDevicesRepo(db: Database): DevicesRepo {
     countActiveDevices() {
       const row = db
         .prepare('SELECT COUNT(*) AS n FROM devices WHERE revoked_at IS NULL')
+        .get() as { n: number };
+      return row.n;
+    },
+    countTotalDevices() {
+      const row = db
+        .prepare('SELECT COUNT(*) AS n FROM devices')
         .get() as { n: number };
       return row.n;
     },
