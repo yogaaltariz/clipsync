@@ -83,7 +83,11 @@ export function createPairingRouter(devices: DevicesRepo, sessions: PairingSessi
   });
 
   router.delete('/devices/:deviceId', requireAuth, (req, res) => {
-    devices.revokeDevice(req.params.deviceId);
+    // req.params values are typed string | string[] by the installed
+    // @types/express-serve-static-core (permissive default for repeated-
+    // capture routes like :id*, which this project doesn't use) — this
+    // route's :deviceId segment is always a single string at runtime.
+    devices.revokeDevice(req.params.deviceId as string);
     res.status(204).send();
   });
 
