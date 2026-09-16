@@ -9,7 +9,7 @@ export function buildTestServer() {
   const db = openDb(path.join(dataDir, 'clipsync.db'));
   const blobDir = path.join(dataDir, 'blobs');
   fs.mkdirSync(blobDir, { recursive: true });
-  const app = createApp(db);
+  const app = createApp(db, blobDir);
   return {
     app,
     db,
