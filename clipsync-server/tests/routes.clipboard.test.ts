@@ -111,4 +111,20 @@ describe('clipboard routes', () => {
     expect(ciphertexts).not.toContain('item-0');
     expect(ciphertexts).toContain('item-50');
   });
+
+  it('returns 400 (not 500) for an authenticated POST with an unparsed content type', async () => {
+    ctx = buildTestServer();
+    const { deviceId, keys } = await pairFirstDevice(ctx.app);
+    // No JSON body-parser is mounted for this content type, so under Express 5 /
+    // body-parser 2, req.body stays `undefined` rather than `{}`. Sign against an
+    // empty body since express.json's `verify` callback never runs for a
+    // content type it doesn't parse, so deviceAuth falls back to an empty rawBody.
+    const headers = authed(keys, deviceId, 'POST', '/api/clipboard');
+    headers['Content-Type'] = 'application/x-www-form-urlencoded';
+    const res = await request(ctx.app)
+      .post('/api/clipboard')
+      .set(headers)
+      .send('contentType=text/plain&ciphertext=abc');
+    expect(res.status).toBe(400);
+  });
 });

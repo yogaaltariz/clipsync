@@ -15,6 +15,7 @@ export const config = {
   maxPairedDevices: 2,
   pairingTtlMs: 120_000,
   authWindowMs: 30_000,
+  maxJsonBodyBytes: 1 * 1024 * 1024, // 1 MB — generous for pasted text/code, well under the separate 10 MB image-upload ceiling in uploads.routes.ts
   tls:
     process.env.CLIPSYNC_TLS_CERT && process.env.CLIPSYNC_TLS_KEY
       ? { certPath: process.env.CLIPSYNC_TLS_CERT, keyPath: process.env.CLIPSYNC_TLS_KEY }

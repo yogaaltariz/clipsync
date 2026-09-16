@@ -226,4 +226,68 @@ describe('pairing flow', () => {
     expect(completeB.body.peerDevices[0].deviceName).toBe('Mac');
     expect(completeB.body.peerDevices[0].publicKeyExchangeJwk).toBe(keysA.publicKeyExchangeJwk);
   });
+
+  it('rejects a garbage publicKeyAuthJwk with 400 and does not consume the pairing session', async () => {
+    ctx = buildTestServer();
+    const start = await request(ctx.app).post('/api/pairing/start').send({ initiatorDeviceName: 'Mac' });
+    const keys = generateDeviceKeys();
+
+    const badAttempt = await request(ctx.app).post('/api/pairing/complete').send({
+      token: start.body.token,
+      deviceName: 'Mac',
+      publicKeyAuthJwk: 'not-a-jwk-at-all',
+      publicKeyExchangeJwk: keys.publicKeyExchangeJwk,
+    });
+    expect(badAttempt.status).toBe(400);
+    expect(badAttempt.body.error).toBe('invalid_public_key');
+
+    // The session must still be usable: the bad request must not have marked it used
+    // or inserted a broken device row.
+    const goodAttempt = await request(ctx.app).post('/api/pairing/complete').send({
+      token: start.body.token,
+      deviceName: 'Mac',
+      publicKeyAuthJwk: keys.publicKeyAuthJwk,
+      publicKeyExchangeJwk: keys.publicKeyExchangeJwk,
+    });
+    expect(goodAttempt.status).toBe(200);
+    expect(goodAttempt.body.deviceId).toBeTypeOf('string');
+  });
+
+  it('returns 400 (not 500) when POST /api/pairing/start is sent with no body at all', async () => {
+    ctx = buildTestServer();
+    // No .send(...) at all: no Content-Type header, no body bytes. Under Express 5 /
+    // body-parser 2, req.body is `undefined` here, not `{}`.
+    const res = await request(ctx.app).post('/api/pairing/start');
+    expect(res.status).toBe(400);
+  });
+
+  it('returns 413 (not 500) for a JSON body over the 1 MB limit', async () => {
+    ctx = buildTestServer();
+    const oversized = 'x'.repeat(2 * 1024 * 1024); // 2 MB, well over config.maxJsonBodyBytes (1 MB)
+    const res = await request(ctx.app)
+      .post('/api/pairing/start')
+      .set('Content-Type', 'application/json')
+      .send(JSON.stringify({ initiatorDeviceName: oversized }));
+    expect(res.status).toBe(413);
+    expect(res.body.error).toBe('bad_request');
+  });
+
+  it('expires a pairing session past its TTL, returning 410 on complete', async () => {
+    ctx = buildTestServer();
+    const start = await request(ctx.app).post('/api/pairing/start').send({ initiatorDeviceName: 'Mac' });
+    const token = start.body.token as string;
+
+    // Directly manipulate expiresAt in the DB to simulate the TTL having elapsed.
+    const past = new Date(Date.now() - 60_000).toISOString();
+    ctx.db.prepare('UPDATE pairing_sessions SET expires_at = ? WHERE token = ?').run(past, token);
+
+    const keys = generateDeviceKeys();
+    const res = await request(ctx.app).post('/api/pairing/complete').send({
+      token,
+      deviceName: 'Mac',
+      publicKeyAuthJwk: keys.publicKeyAuthJwk,
+      publicKeyExchangeJwk: keys.publicKeyExchangeJwk,
+    });
+    expect(res.status).toBe(410);
+  });
 });

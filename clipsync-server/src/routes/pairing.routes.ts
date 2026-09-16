@@ -1,10 +1,19 @@
-import { randomUUID } from 'node:crypto';
+import { randomUUID, createPublicKey } from 'node:crypto';
 import { Router } from 'express';
 import { config } from '../config.js';
 import { generatePairingToken } from '../crypto/tokens.js';
 import { deviceAuth } from '../middleware/deviceAuth.js';
 import type { DevicesRepo } from '../db/devices.repo.js';
 import type { PairingSessionsRepo } from '../db/pairingSessions.repo.js';
+
+function isValidJwkOfType(jwkString: string, expectedType: string): boolean {
+  try {
+    const key = createPublicKey({ key: JSON.parse(jwkString), format: 'jwk' });
+    return key.asymmetricKeyType === expectedType;
+  } catch {
+    return false;
+  }
+}
 
 export function createPairingRouter(
   devices: DevicesRepo,
@@ -32,7 +41,7 @@ export function createPairingRouter(
       res.status(409).json({ error: 'max_paired_devices' });
       return;
     }
-    const { initiatorDeviceName } = req.body as { initiatorDeviceName?: string };
+    const { initiatorDeviceName } = (req.body ?? {}) as { initiatorDeviceName?: string };
     if (!initiatorDeviceName) {
       res.status(400).json({ error: 'initiatorDeviceName required' });
       return;
@@ -51,7 +60,7 @@ export function createPairingRouter(
   }
 
   router.post('/complete', (req, res) => {
-    const { token, deviceName, publicKeyAuthJwk, publicKeyExchangeJwk } = req.body as {
+    const { token, deviceName, publicKeyAuthJwk, publicKeyExchangeJwk } = (req.body ?? {}) as {
       token?: string;
       deviceName?: string;
       publicKeyAuthJwk?: string;
@@ -59,6 +68,10 @@ export function createPairingRouter(
     };
     if (!token || !deviceName || !publicKeyAuthJwk || !publicKeyExchangeJwk) {
       res.status(400).json({ error: 'missing fields' });
+      return;
+    }
+    if (!isValidJwkOfType(publicKeyAuthJwk, 'ed25519') || !isValidJwkOfType(publicKeyExchangeJwk, 'x25519')) {
+      res.status(400).json({ error: 'invalid_public_key' });
       return;
     }
     const session = sessions.getSession(token);

@@ -16,7 +16,7 @@ export function createClipboardRouter(
   const requireAuth = deviceAuth(devices);
 
   router.post('/', requireAuth, (req, res) => {
-    const { contentType, ciphertext } = req.body as { contentType?: string; ciphertext?: string };
+    const { contentType, ciphertext } = (req.body ?? {}) as { contentType?: string; ciphertext?: string };
     if (!contentType || !ciphertext) {
       res.status(400).json({ error: 'contentType and ciphertext required' });
       return;
