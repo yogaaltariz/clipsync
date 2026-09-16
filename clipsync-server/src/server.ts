@@ -90,6 +90,7 @@ export function createHttpServer(db: Database, blobDir: string = config.blobDir)
     wss.handleUpgrade(req, socket, head, (ws) => {
       hub.add(device.deviceId, ws);
       ws.on('close', () => hub.remove(device.deviceId, ws));
+      ws.on('error', () => hub.remove(device.deviceId, ws));
     });
   });
 
