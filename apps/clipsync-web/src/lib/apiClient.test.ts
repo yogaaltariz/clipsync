@@ -142,4 +142,10 @@ describe('createApiClient', () => {
     const [url] = (fetch as ReturnType<typeof vi.fn>).mock.calls[0];
     expect(url).toBe(`${baseUrl}/api/clipboard/item-1/blob`);
   });
+
+  it('deleteClipboardItem throws with server error code from response body', async () => {
+    mockFetchOnce(404, { error: 'not_found' });
+    const client = createApiClient({ baseUrl, deviceId, authPrivateKey });
+    await expect(client.deleteClipboardItem('item-missing')).rejects.toThrow('not_found');
+  });
 });
