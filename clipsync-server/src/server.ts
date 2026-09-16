@@ -1,5 +1,7 @@
 import path from 'node:path';
 import http from 'node:http';
+import https from 'node:https';
+import fs from 'node:fs';
 import express from 'express';
 import type { Database } from 'better-sqlite3';
 import { WebSocketServer } from 'ws';
@@ -62,12 +64,23 @@ export function createApp(
   return app;
 }
 
-export function createHttpServer(db: Database, blobDir: string = config.blobDir) {
+export function createHttpServer(
+  db: Database,
+  blobDir: string = config.blobDir,
+  tlsOverride?: { certPath: string; keyPath: string },
+) {
   const hub = new ConnectionHub();
   hubRef = hub;
   const app = createApp(db, blobDir, (event) => hub.broadcast(event));
   const devices = createDevicesRepo(db);
-  const server = http.createServer(app);
+
+  const tls = tlsOverride ?? config.tls;
+  const server = tls
+    ? https.createServer(
+        { cert: fs.readFileSync(tls.certPath), key: fs.readFileSync(tls.keyPath) },
+        app,
+      )
+    : http.createServer(app);
   const wss = new WebSocketServer({ noServer: true });
 
   server.on('upgrade', (req, socket, head) => {

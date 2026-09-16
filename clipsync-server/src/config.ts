@@ -15,4 +15,8 @@ export const config = {
   maxPairedDevices: 2,
   pairingTtlMs: 120_000,
   authWindowMs: 30_000,
+  tls:
+    process.env.CLIPSYNC_TLS_CERT && process.env.CLIPSYNC_TLS_KEY
+      ? { certPath: process.env.CLIPSYNC_TLS_CERT, keyPath: process.env.CLIPSYNC_TLS_KEY }
+      : undefined,
 } as const;
