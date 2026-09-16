@@ -13,7 +13,7 @@ import { deleteBlob } from './storage/blobStore.js';
 import { config } from './config.js';
 import { ConnectionHub } from './ws/hub.js';
 import { buildCanonicalString, sha256Hex, verifySignature } from './crypto/signatures.js';
-import { requestLogger } from './middleware/logging.js';
+import { requestLogger, errorLogger } from './middleware/logging.js';
 
 let hubRef: ConnectionHub | undefined; // set by createHttpServer; undefined in pure createApp tests
 
@@ -56,6 +56,8 @@ export function createApp(
   };
   app.use('/api/clipboard', createClipboardRouter(devices, clipboardItems, onEvict, onChange));
   app.use('/api/clipboard', createUploadsRouter(devices, clipboardItems, blobDir, onChange));
+
+  app.use(errorLogger());
 
   return app;
 }
