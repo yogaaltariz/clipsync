@@ -141,4 +141,26 @@ describe('createWsClient', () => {
     const independentlySigned = await signRequest(authKeyPair.privateKey, 'GET', '/clipboard', undefined, timestamp);
     expect(independentlySigned.signature).toBe(signature);
   });
+
+  it('does not open a socket if close() is called synchronously before connection completes', async () => {
+    const { authKeyPair } = await generateDeviceKeys();
+    wss = new WebSocketServer({ port: 0 });
+    const port = (wss.address() as { port: number }).port;
+
+    // Create and immediately close (synchronous, no await in between)
+    client = createWsClient({
+      baseUrl: `http://127.0.0.1:${port}`,
+      deviceId: 'device-1',
+      authPrivateKey: authKeyPair.privateKey,
+      onEvent: () => {},
+      onStatusChange: () => {},
+    });
+    client.close();
+
+    // Wait for any pending operations to complete
+    await new Promise((resolve) => setTimeout(resolve, 100));
+
+    // Verify the server never received a connection
+    expect(wss.clients.size).toBe(0);
+  });
 });

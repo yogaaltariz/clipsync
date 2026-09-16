@@ -37,6 +37,7 @@ export function createWsClient({
   async function connect() {
     onStatusChange('connecting');
     const { timestamp, signature } = await signRequest(authPrivateKey, 'GET', '/clipboard');
+    if (closedByCaller) return; // close() ran while we were awaiting the signature — never open a socket
     const wsBase = baseUrl.replace(/^http/, 'ws');
     const url = new URL(`${wsBase}/clipboard`);
     url.searchParams.set('deviceId', deviceId);
@@ -65,7 +66,9 @@ export function createWsClient({
       if (closedByCaller) return;
       const delay = RECONNECT_DELAYS_MS[Math.min(reconnectAttempt, RECONNECT_DELAYS_MS.length - 1)];
       reconnectAttempt += 1;
-      reconnectTimer = setTimeout(connect, delay);
+      reconnectTimer = setTimeout(() => {
+        connect().catch(() => onStatusChange('closed'));
+      }, delay);
     });
 
     socket.addEventListener('error', () => {
@@ -75,7 +78,7 @@ export function createWsClient({
     });
   }
 
-  connect();
+  connect().catch(() => onStatusChange('closed'));
 
   return {
     close() {
