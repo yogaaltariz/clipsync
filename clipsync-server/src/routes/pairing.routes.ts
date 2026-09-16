@@ -12,7 +12,11 @@ export function createPairingRouter(devices: DevicesRepo, sessions: PairingSessi
 
   router.post('/start', (req, res, next) => {
     // Bootstrap case: the very first device pairs without prior auth.
-    if (devices.countActiveDevices() === 0) {
+    const hasAnyAuthHeaders =
+      req.header('X-ClipSync-Device-Id') ||
+      req.header('X-ClipSync-Timestamp') ||
+      req.header('X-ClipSync-Signature');
+    if (devices.countActiveDevices() === 0 && !hasAnyAuthHeaders) {
       handleStart(req, res);
       return;
     }
