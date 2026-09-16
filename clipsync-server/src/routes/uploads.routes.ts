@@ -1,3 +1,4 @@
+import path from 'node:path';
 import { Router } from 'express';
 import multer from 'multer';
 import { config } from '../config.js';
@@ -18,7 +19,19 @@ export function createUploadsRouter(
 ): Router {
   const router = Router();
 
-  router.post('/:id/blob', upload.single('file'), async (req, res) => {
+  router.post('/:id/blob', (req, res, next) => {
+    upload.single('file')(req, res, (err) => {
+      if (err) {
+        if (err instanceof multer.MulterError && err.code === 'LIMIT_FILE_SIZE') {
+          res.status(413).json({ error: 'file_too_large' });
+          return;
+        }
+        next(err);
+        return;
+      }
+      next();
+    });
+  }, async (req, res) => {
     const deviceId = req.header('X-ClipSync-Device-Id');
     const timestamp = req.header('X-ClipSync-Timestamp');
     const signature = req.header('X-ClipSync-Signature');
@@ -55,8 +68,8 @@ export function createUploadsRouter(
       return;
     }
 
-    const fullPath = await writeBlob(blobDir, item.id, file.buffer);
-    const updated: ClipboardItem = { ...item, blobPath: fullPath };
+    const relativeBlobPath = await writeBlob(blobDir, item.id, file.buffer);
+    const updated: ClipboardItem = { ...item, blobPath: relativeBlobPath, ciphertext: null };
     items.deleteItem(item.id);
     items.insertItem(updated);
     onChange({ type: 'clipboard.created', item: updated });
@@ -92,7 +105,8 @@ export function createUploadsRouter(
       res.status(404).json({ error: 'not_found' });
       return;
     }
-    const data = await readBlob(item.blobPath);
+    const absolutePath = path.join(blobDir, item.blobPath);
+    const data = await readBlob(absolutePath);
     res.status(200).type(item.contentType).send(data);
   });
 

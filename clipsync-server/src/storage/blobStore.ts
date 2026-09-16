@@ -9,7 +9,7 @@ export async function writeBlob(blobDir: string, itemId: string, data: Buffer): 
   await fs.mkdir(blobDir, { recursive: true });
   const fullPath = blobPathFor(blobDir, itemId);
   await fs.writeFile(fullPath, data);
-  return fullPath;
+  return `${itemId}.bin`;
 }
 
 export async function readBlob(absolutePath: string): Promise<Buffer> {

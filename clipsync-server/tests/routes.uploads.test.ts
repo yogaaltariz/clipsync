@@ -67,4 +67,15 @@ describe('image upload and download', () => {
     const res = await request(ctx.app).post('/api/clipboard/some-id/blob').attach('file', Buffer.from('x'), 'x.png');
     expect(res.status).toBe(401);
   });
+
+  it('rejects oversized uploads with 413 without auth', async () => {
+    ctx = buildTestServer();
+    const oversizedBuffer = Buffer.alloc(11 * 1024 * 1024); // 11 MB
+    const res = await request(ctx.app)
+      .post('/api/clipboard/some-id/blob')
+      .attach('file', oversizedBuffer, 'huge.png');
+    expect(res.status).toBe(413);
+    expect(res.body.error).toBe('file_too_large');
+    expect(JSON.stringify(res.body)).not.toContain('Error');
+  });
 });

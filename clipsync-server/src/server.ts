@@ -1,3 +1,4 @@
+import path from 'node:path';
 import express from 'express';
 import type { Database } from 'better-sqlite3';
 import { createDevicesRepo } from './db/devices.repo.js';
@@ -32,7 +33,7 @@ export function createApp(db: Database, blobDir: string = config.blobDir): expre
   const clipboardItems = createClipboardItemsRepo(db);
   const onEvict = (evicted: import('./types.js').ClipboardItem[]) => {
     for (const item of evicted) {
-      if (item.blobPath) void deleteBlob(item.blobPath);
+      if (item.blobPath) void deleteBlob(path.join(blobDir, item.blobPath));
     }
   };
   app.use('/api/clipboard', createClipboardRouter(devices, clipboardItems, onEvict));
