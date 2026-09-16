@@ -1,0 +1,15 @@
+# tool-local state, not project content
+.memsearch/
+
+# node
+node_modules/
+dist/
+
+# runtime data (clipsync-server writes SQLite + blobs here)
+data/
+
+# misc
+*.log
+.DS_Store
+.env
+.env.local
