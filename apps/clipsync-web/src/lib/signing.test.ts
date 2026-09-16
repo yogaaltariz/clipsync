@@ -1,6 +1,7 @@
 // @vitest-environment node
 import { describe, expect, it } from 'vitest';
-import { buildCanonicalString, sha256Hex } from './signing.js';
+import { buildCanonicalString, sha256Hex, signRequest } from './signing.js';
+import { generateDeviceKeys } from './deviceIdentity.js';
 
 describe('sha256Hex', () => {
   it('hashes an empty string to the known SHA-256 constant', async () => {
@@ -58,5 +59,46 @@ describe('WebCrypto capability check (this test IS the capability check)', () =>
     expect(jwk.kty).toBe('OKP');
     expect(jwk.crv).toBe('Ed25519');
     expect(typeof jwk.x).toBe('string');
+  });
+});
+
+describe('signRequest', () => {
+  it('produces a signature that verifies against the canonical string it covers', async () => {
+    const { authKeyPair } = await generateDeviceKeys();
+    const bodyBuffer = new TextEncoder().encode(JSON.stringify({ foo: 'bar' })).buffer as ArrayBuffer;
+    const { timestamp, signature } = await signRequest(authKeyPair.privateKey, 'POST', '/api/clipboard', bodyBuffer);
+
+    const bodyHash = await sha256Hex(bodyBuffer);
+    const canonical = buildCanonicalString('POST', '/api/clipboard', timestamp, bodyHash);
+    const signatureBytes = Uint8Array.from(atob(signature), (c) => c.charCodeAt(0));
+    const valid = await crypto.subtle.verify(
+      { name: 'Ed25519' },
+      authKeyPair.publicKey,
+      signatureBytes,
+      new TextEncoder().encode(canonical),
+    );
+    expect(valid).toBe(true);
+  });
+
+  it('defaults to an empty body when none is given, matching a GET request', async () => {
+    const { authKeyPair } = await generateDeviceKeys();
+    const { timestamp, signature } = await signRequest(authKeyPair.privateKey, 'GET', '/api/clipboard');
+
+    const emptyBodyHash = await sha256Hex(new ArrayBuffer(0));
+    const canonical = buildCanonicalString('GET', '/api/clipboard', timestamp, emptyBodyHash);
+    const signatureBytes = Uint8Array.from(atob(signature), (c) => c.charCodeAt(0));
+    const valid = await crypto.subtle.verify(
+      { name: 'Ed25519' },
+      authKeyPair.publicKey,
+      signatureBytes,
+      new TextEncoder().encode(canonical),
+    );
+    expect(valid).toBe(true);
+  });
+
+  it('uses the timestamp it is given rather than always the current time', async () => {
+    const { authKeyPair } = await generateDeviceKeys();
+    const { timestamp } = await signRequest(authKeyPair.privateKey, 'GET', '/x', undefined, '1700000000000');
+    expect(timestamp).toBe('1700000000000');
   });
 });
