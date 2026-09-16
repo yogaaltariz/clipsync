@@ -37,8 +37,8 @@ describe('WebCrypto capability check (this test IS the capability check)', () =>
   });
 
   it('can generate an X25519 key pair and derive matching shared bits between two parties', async () => {
-    const alice = await crypto.subtle.generateKey({ name: 'X25519' }, true, ['deriveBits']);
-    const bob = await crypto.subtle.generateKey({ name: 'X25519' }, true, ['deriveBits']);
+    const alice = (await crypto.subtle.generateKey({ name: 'X25519' }, true, ['deriveBits'])) as CryptoKeyPair;
+    const bob = (await crypto.subtle.generateKey({ name: 'X25519' }, true, ['deriveBits'])) as CryptoKeyPair;
     const aliceShared = await crypto.subtle.deriveBits(
       { name: 'X25519', public: bob.publicKey },
       alice.privateKey,
