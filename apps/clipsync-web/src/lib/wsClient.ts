@@ -29,6 +29,7 @@ export function createWsClient({
   onEvent,
   onStatusChange,
 }: WsClientConfig): WsClient {
+  const normalizedBaseUrl = baseUrl.replace(/\/+$/, '');
   let socket: WebSocket | undefined;
   let closedByCaller = false;
   let reconnectAttempt = 0;
@@ -37,8 +38,13 @@ export function createWsClient({
   async function connect() {
     onStatusChange('connecting');
     const { timestamp, signature } = await signRequest(authPrivateKey, 'GET', '/clipboard');
-    if (closedByCaller) return; // close() ran while we were awaiting the signature — never open a socket
-    const wsBase = baseUrl.replace(/^http/, 'ws');
+    if (closedByCaller) {
+      // close() ran while we were awaiting the signature — never open a socket,
+      // but the caller still needs a terminal status instead of being stuck on 'connecting'.
+      onStatusChange('closed');
+      return;
+    }
+    const wsBase = normalizedBaseUrl.replace(/^http/, 'ws');
     const url = new URL(`${wsBase}/clipboard`);
     url.searchParams.set('deviceId', deviceId);
     url.searchParams.set('timestamp', timestamp);

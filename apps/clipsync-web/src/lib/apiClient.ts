@@ -25,7 +25,7 @@ export interface ApiClientConfig {
   authPrivateKey: CryptoKey;
 }
 
-class ApiError extends Error {
+export class ApiError extends Error {
   constructor(
     public status: number,
     errorCode: string,
@@ -53,6 +53,8 @@ export interface ApiClient {
 }
 
 export function createApiClient({ baseUrl, deviceId, authPrivateKey }: ApiClientConfig): ApiClient {
+  const normalizedBaseUrl = baseUrl.replace(/\/+$/, '');
+
   async function authedHeaders(method: string, path: string, bodyBuffer?: ArrayBuffer) {
     const { timestamp, signature } = await signRequest(authPrivateKey, method, path, bodyBuffer);
     return {
@@ -85,13 +87,13 @@ export function createApiClient({ baseUrl, deviceId, authPrivateKey }: ApiClient
         const bodyBuffer = new TextEncoder().encode(bodyString).buffer as ArrayBuffer;
         Object.assign(headers, await authedHeaders('POST', path, bodyBuffer));
       }
-      const res = await fetch(`${baseUrl}${path}`, { method: 'POST', headers, body: bodyString });
+      const res = await fetch(`${normalizedBaseUrl}${path}`, { method: 'POST', headers, body: bodyString });
       return parseJsonOrThrow(res);
     },
 
     async pairingComplete(input) {
       const path = '/api/pairing/complete';
-      const res = await fetch(`${baseUrl}${path}`, {
+      const res = await fetch(`${normalizedBaseUrl}${path}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(input),
@@ -102,7 +104,7 @@ export function createApiClient({ baseUrl, deviceId, authPrivateKey }: ApiClient
     async listClipboard() {
       const path = '/api/clipboard';
       const headers = await authedHeaders('GET', path);
-      const res = await fetch(`${baseUrl}${path}`, { method: 'GET', headers });
+      const res = await fetch(`${normalizedBaseUrl}${path}`, { method: 'GET', headers });
       return parseJsonOrThrow(res);
     },
 
@@ -111,28 +113,28 @@ export function createApiClient({ baseUrl, deviceId, authPrivateKey }: ApiClient
       const bodyString = JSON.stringify(input);
       const bodyBuffer = new TextEncoder().encode(bodyString).buffer as ArrayBuffer;
       const headers = { 'Content-Type': 'application/json', ...(await authedHeaders('POST', path, bodyBuffer)) };
-      const res = await fetch(`${baseUrl}${path}`, { method: 'POST', headers, body: bodyString });
+      const res = await fetch(`${normalizedBaseUrl}${path}`, { method: 'POST', headers, body: bodyString });
       return parseJsonOrThrow(res);
     },
 
     async deleteClipboardItem(id) {
       const path = `/api/clipboard/${id}`;
       const headers = await authedHeaders('DELETE', path);
-      const res = await fetch(`${baseUrl}${path}`, { method: 'DELETE', headers });
+      const res = await fetch(`${normalizedBaseUrl}${path}`, { method: 'DELETE', headers });
       await throwIfError(res);
     },
 
     async clearClipboard() {
       const path = '/api/clipboard';
       const headers = await authedHeaders('DELETE', path);
-      const res = await fetch(`${baseUrl}${path}`, { method: 'DELETE', headers });
+      const res = await fetch(`${normalizedBaseUrl}${path}`, { method: 'DELETE', headers });
       await throwIfError(res);
     },
 
     async unpairDevice(targetDeviceId) {
       const path = `/api/pairing/devices/${targetDeviceId}`;
       const headers = await authedHeaders('DELETE', path);
-      const res = await fetch(`${baseUrl}${path}`, { method: 'DELETE', headers });
+      const res = await fetch(`${normalizedBaseUrl}${path}`, { method: 'DELETE', headers });
       await throwIfError(res);
     },
 
@@ -142,14 +144,14 @@ export function createApiClient({ baseUrl, deviceId, authPrivateKey }: ApiClient
       const headers = await authedHeaders('POST', path, fileBuffer);
       const formData = new FormData();
       formData.append('file', file);
-      const res = await fetch(`${baseUrl}${path}`, { method: 'POST', headers, body: formData });
+      const res = await fetch(`${normalizedBaseUrl}${path}`, { method: 'POST', headers, body: formData });
       return parseJsonOrThrow(res);
     },
 
     async downloadBlob(itemId) {
       const path = `/api/clipboard/${itemId}/blob`;
       const headers = await authedHeaders('GET', path);
-      const res = await fetch(`${baseUrl}${path}`, { method: 'GET', headers });
+      const res = await fetch(`${normalizedBaseUrl}${path}`, { method: 'GET', headers });
       await throwIfError(res);
       return res.blob();
     },

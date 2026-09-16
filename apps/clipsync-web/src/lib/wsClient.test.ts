@@ -117,6 +117,54 @@ describe('createWsClient', () => {
     expect(statuses[statuses.length - 1]).toBe('closed');
   });
 
+  it('strips a trailing slash from baseUrl so the websocket URL has no doubled slash', async () => {
+    const { authKeyPair } = await generateDeviceKeys();
+    wss = new WebSocketServer({ port: 0 });
+    const port = (wss.address() as { port: number }).port;
+
+    // Capture the raw request path/query as the server actually received it.
+    // (Parsing this with `new URL(rawUrl, 'http://localhost')` would silently
+    // absorb a leading "//" into the host component instead of surfacing it
+    // as a doubled path separator, so assert on the raw string directly.)
+    const rawUrl = await new Promise<string>((resolve) => {
+      wss.on('connection', (_ws, req) => {
+        resolve(req.url ?? '');
+      });
+      client = createWsClient({
+        baseUrl: `http://127.0.0.1:${port}/`,
+        deviceId: 'device-1',
+        authPrivateKey: authKeyPair.privateKey,
+        onEvent: () => {},
+        onStatusChange: () => {},
+      });
+    });
+
+    expect(rawUrl.startsWith('/clipboard')).toBe(true);
+    expect(rawUrl.startsWith('//')).toBe(false);
+  });
+
+  it('strips multiple trailing slashes from baseUrl', async () => {
+    const { authKeyPair } = await generateDeviceKeys();
+    wss = new WebSocketServer({ port: 0 });
+    const port = (wss.address() as { port: number }).port;
+
+    const rawUrl = await new Promise<string>((resolve) => {
+      wss.on('connection', (_ws, req) => {
+        resolve(req.url ?? '');
+      });
+      client = createWsClient({
+        baseUrl: `http://127.0.0.1:${port}///`,
+        deviceId: 'device-1',
+        authPrivateKey: authKeyPair.privateKey,
+        onEvent: () => {},
+        onStatusChange: () => {},
+      });
+    });
+
+    expect(rawUrl.startsWith('/clipboard')).toBe(true);
+    expect(rawUrl.startsWith('//')).toBe(false);
+  });
+
   it('canonical string for the handshake matches signRequest over the fixed (GET, /clipboard) pair', async () => {
     const { authKeyPair } = await generateDeviceKeys();
     wss = new WebSocketServer({ port: 0 });
@@ -147,13 +195,14 @@ describe('createWsClient', () => {
     wss = new WebSocketServer({ port: 0 });
     const port = (wss.address() as { port: number }).port;
 
+    const statuses: string[] = [];
     // Create and immediately close (synchronous, no await in between)
     client = createWsClient({
       baseUrl: `http://127.0.0.1:${port}`,
       deviceId: 'device-1',
       authPrivateKey: authKeyPair.privateKey,
       onEvent: () => {},
-      onStatusChange: () => {},
+      onStatusChange: (status) => statuses.push(status),
     });
     client.close();
 
@@ -162,5 +211,38 @@ describe('createWsClient', () => {
 
     // Verify the server never received a connection
     expect(wss.clients.size).toBe(0);
+    // The bail-out path must still emit a terminal 'closed' status — otherwise
+    // the caller is stuck seeing 'connecting' forever.
+    expect(statuses).toContain('closed');
   });
+
+  it('automatically reconnects after the server closes the connection', async () => {
+    const { authKeyPair } = await generateDeviceKeys();
+    wss = new WebSocketServer({ port: 0 });
+    const port = (wss.address() as { port: number }).port;
+
+    let connectionCount = 0;
+    const secondConnectionPromise = new Promise<void>((resolve) => {
+      wss.on('connection', (ws) => {
+        connectionCount += 1;
+        if (connectionCount === 1) {
+          // Simulate a server-initiated disconnect shortly after connecting.
+          setTimeout(() => ws.close(), 50);
+        } else if (connectionCount === 2) {
+          resolve();
+        }
+      });
+    });
+
+    client = createWsClient({
+      baseUrl: `http://127.0.0.1:${port}`,
+      deviceId: 'device-1',
+      authPrivateKey: authKeyPair.privateKey,
+      onEvent: () => {},
+      onStatusChange: () => {},
+    });
+
+    await secondConnectionPromise;
+    expect(connectionCount).toBe(2);
+  }, 10000);
 });

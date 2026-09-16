@@ -148,4 +148,21 @@ describe('createApiClient', () => {
     const client = createApiClient({ baseUrl, deviceId, authPrivateKey });
     await expect(client.deleteClipboardItem('item-missing')).rejects.toThrow('not_found');
   });
+
+  it('strips a trailing slash from baseUrl so constructed URLs never contain a doubled slash', async () => {
+    mockFetchOnce(200, { items: [] });
+    const client = createApiClient({ baseUrl: `${baseUrl}/`, deviceId, authPrivateKey });
+    await client.listClipboard();
+    const [url] = (fetch as ReturnType<typeof vi.fn>).mock.calls[0];
+    expect(url).toBe(`${baseUrl}/api/clipboard`);
+    expect(url).not.toContain('//api/clipboard');
+  });
+
+  it('strips multiple trailing slashes from baseUrl', async () => {
+    mockFetchOnce(200, { items: [] });
+    const client = createApiClient({ baseUrl: `${baseUrl}///`, deviceId, authPrivateKey });
+    await client.listClipboard();
+    const [url] = (fetch as ReturnType<typeof vi.fn>).mock.calls[0];
+    expect(url).toBe(`${baseUrl}/api/clipboard`);
+  });
 });
