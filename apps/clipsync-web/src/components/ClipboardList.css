@@ -1,0 +1,120 @@
+.clipboard-list {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.clipboard-list__header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  padding: var(--spacing-12) var(--spacing-20) var(--spacing-4);
+  flex-shrink: 0;
+}
+
+.clipboard-list__header-left {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+}
+
+.clipboard-list__title {
+  font-weight: var(--font-weight-medium);
+  font-size: var(--text-label);
+}
+
+.clipboard-list__count,
+.clipboard-list__order {
+  color: var(--color-ash);
+  font-size: var(--text-meta);
+}
+
+.clipboard-row {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--spacing-12);
+  padding: 14px var(--spacing-20);
+  border-top: 1px solid var(--color-fog);
+  text-align: left;
+  background: none;
+  border-left: none;
+  border-right: none;
+  border-bottom: none;
+  width: 100%;
+  cursor: default;
+}
+
+.clipboard-row--clickable {
+  cursor: pointer;
+}
+
+.clipboard-row__icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-pill);
+  background: var(--color-mist);
+  color: var(--color-graphite);
+}
+
+.clipboard-row__body {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+  gap: var(--spacing-4);
+}
+
+.clipboard-row__content {
+  font-size: var(--text-body);
+  color: var(--color-carbon);
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  word-break: break-word;
+}
+
+.clipboard-row__content--mono {
+  font-family: var(--font-mono);
+  font-size: var(--text-label);
+}
+
+.clipboard-row__meta {
+  color: var(--color-ash);
+  font-size: var(--text-meta);
+}
+
+.clipboard-row__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.clipboard-row__button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--spacing-4);
+  height: 36px;
+  padding: 0 14px;
+  border-radius: var(--radius-pill);
+  border: none;
+  background: var(--color-paper-white);
+  box-shadow: var(--shadow-chip);
+  font-weight: var(--font-weight-medium);
+  font-size: var(--text-label);
+  color: var(--color-carbon);
+}
+
+.clipboard-row__button--copied {
+  background: var(--color-mint-wash);
+  color: var(--color-mint-deep);
+  box-shadow: none;
+}

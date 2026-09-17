@@ -1,11 +1,10 @@
-// Scaffold placeholder. Real screens (main clipboard view, manual paste
-// fallback, pairing flow, settings) are built per the frontend
-// implementation plan, against the Paper.design artboards and DESIGN.md.
+import { Outlet } from 'react-router';
+import { AppStateProvider } from './lib/appState.js';
+
 export function App() {
   return (
-    <main>
-      <h1>ClipSync</h1>
-      <p>Frontend scaffold — screens not yet built.</p>
-    </main>
+    <AppStateProvider>
+      <Outlet />
+    </AppStateProvider>
   );
 }

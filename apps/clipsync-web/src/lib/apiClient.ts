@@ -43,6 +43,7 @@ export interface ApiClient {
     publicKeyAuthJwk: string;
     publicKeyExchangeJwk: string;
   }): Promise<{ deviceId: string; peerDevices: PeerDevice[] }>;
+  listDevices(): Promise<{ peerDevices: PeerDevice[] }>;
   listClipboard(): Promise<{ items: ClipboardItemDto[] }>;
   addClipboardItem(input: { contentType: string; ciphertext: string }): Promise<ClipboardItemDto>;
   deleteClipboardItem(id: string): Promise<void>;
@@ -98,6 +99,13 @@ export function createApiClient({ baseUrl, deviceId, authPrivateKey }: ApiClient
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(input),
       });
+      return parseJsonOrThrow(res);
+    },
+
+    async listDevices() {
+      const path = '/api/pairing/devices';
+      const headers = await authedHeaders('GET', path);
+      const res = await fetch(`${normalizedBaseUrl}${path}`, { method: 'GET', headers });
       return parseJsonOrThrow(res);
     },
 

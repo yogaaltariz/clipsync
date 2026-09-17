@@ -8,6 +8,7 @@
   },
   "scripts": {
     "dev": "tsx watch src/server.ts",
+    "dev:lan": "node scripts/dev-lan.mjs",
     "build": "tsc -p tsconfig.json",
     "postbuild": "mkdir -p dist/db && cp src/db/schema.sql dist/db/schema.sql",
     "start": "node dist/server.js",
@@ -26,6 +27,7 @@
     "@types/node": "^22.20.3",
     "@types/supertest": "^7.2.1",
     "@types/ws": "^8.18.1",
+    "qrcode": "^1.5.4",
     "selfsigned": "^5.5.0",
     "supertest": "^7.2.2",
     "tsx": "^4.23.13",

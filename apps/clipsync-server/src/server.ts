@@ -2,6 +2,7 @@ import path from 'node:path';
 import http from 'node:http';
 import https from 'node:https';
 import fs from 'node:fs';
+import { fileURLToPath } from 'node:url';
 import express from 'express';
 import type { Database } from 'better-sqlite3';
 import { WebSocketServer } from 'ws';
@@ -16,6 +17,8 @@ import { config } from './config.js';
 import { ConnectionHub } from './ws/hub.js';
 import { buildCanonicalString, sha256Hex, verifySignature } from './crypto/signatures.js';
 import { requestLogger, errorLogger } from './middleware/logging.js';
+
+const currentDir = path.dirname(fileURLToPath(import.meta.url));
 
 let hubRef: ConnectionHub | undefined; // set by createHttpServer; undefined in pure createApp tests
 
@@ -65,6 +68,19 @@ export function createApp(
   app.use('/api/clipboard', createUploadsRouter(devices, clipboardItems, blobDir, onChange));
 
   app.use(errorLogger());
+
+  // Serve the built web client from the same origin as the API when it has
+  // been built (apps/clipsync-web/dist) — this is what lets the phone load
+  // the app from the Mac's own address with no separate frontend server and
+  // no cross-origin requests to configure. Absent in test environments and
+  // in `npm run dev`, where the frontend runs its own Vite dev server.
+  const webDistDir = path.resolve(currentDir, '../../clipsync-web/dist');
+  if (fs.existsSync(path.join(webDistDir, 'index.html'))) {
+    app.use(express.static(webDistDir));
+    app.get(/^(?!\/api\/|\/clipboard$|\/healthz$).*/, (_req, res) => {
+      res.sendFile(path.join(webDistDir, 'index.html'));
+    });
+  }
 
   return app;
 }
@@ -124,7 +140,6 @@ export function createHttpServer(
   return { server, hub };
 }
 
-import { fileURLToPath } from 'node:url';
 import { openDb } from './db/client.js';
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {

@@ -99,6 +99,12 @@ export function createPairingRouter(
     res.status(200).json({ deviceId, peerDevices });
   });
 
+  router.get('/devices', requireAuth, (req, res) => {
+    const self = (req as any).device;
+    const peerDevices = devices.listActiveDevices().filter((d) => d.deviceId !== self.deviceId);
+    res.status(200).json({ peerDevices });
+  });
+
   router.delete('/devices/:deviceId', requireAuth, (req, res) => {
     // req.params values are typed string | string[] by the installed
     // @types/express-serve-static-core (permissive default for repeated-
